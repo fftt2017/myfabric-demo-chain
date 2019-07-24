@@ -1,0 +1,58 @@
+version: '3'
+
+networks:
+  myfabric-network:
+    external: true
+
+services:
+
+  setup-orderer:
+    container_name: setup-orderer
+    image: hyperledger/fabric-tools:1.4.0
+    command: /bin/bash -c '/scripts/setup-orderer.sh 2>&1 | tee /data/logs/setup-orderer.log; sleep 99999'
+    environment:
+      - GENESIS_BLOCK_FILE=/data/genesis.block
+      - SYSTEM_CHAIN_ID=demo-system-chain
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+      - ./config:/config
+      - ../org0/data/msp:/orgs/org0/msp
+      - ../org1/data/msp:/orgs/org1/msp
+      - ../org2/data/msp:/orgs/org2/msp
+    networks:
+      - myfabric-network
+
+  orderer1-org0:
+    container_name: orderer1-org0
+    build:
+      context: .
+      dockerfile: fabric-ca-orderer.dockerfile
+    environment:
+      - ORDERER_HOME=/etc/hyperledger/orderer
+      - ORDERER_HOST=orderer1-org0
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/data/genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=org0MSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/etc/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/etc/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/orgs/org0/data/org0-ca-chain.pem]
+      - ORDERER_GENERAL_TLS_CLIENTAUTHREQUIRED=true
+      - ORDERER_GENERAL_TLS_CLIENTROOTCAS=[/orgs/org0/data/org0-ca-chain.pem]
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_DEBUG_BROADCASTTRACEDIR=data/logs
+    command: /bin/bash -c '/scripts/start-orderer.sh 2>&1 | tee /data/logs/orderer1-org0.log'
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+      - ../org0/data:/orgs/org0/data
+    ports:
+      - 7050:7050
+    networks:
+      - myfabric-network
+    depends_on:
+      - setup-orderer
+

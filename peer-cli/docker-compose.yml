@@ -1,0 +1,61 @@
+version: '3'
+
+networks:
+  myfabric-network:
+    external: true
+
+services:
+
+  setup-channel:
+    container_name: setup-channel
+    image: hyperledger/fabric-tools:1.4.0
+    command: /bin/bash -c '/scripts/setup-channel.sh 2>&1 | tee /data/logs/setup-channel.log; sleep 99999'
+    environment:
+      - APP_CHAIN_ID=demo-app-chain
+      - CHANNEL_TX_FILE=/data/channel.tx
+      - ORGS=org1 org2
+      - ANCHOR_TX_FILES=/data/org1_anchors.tx /data/org2_anchors.tx
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+      - ./config:/config
+      - ../org1/data/msp:/orgs/org1/msp
+      - ../org2/data/msp:/orgs/org2/msp
+    networks:
+      - myfabric-network
+
+  peer-cli:
+    container_name: peer-cli
+    image: hyperledger/fabric-tools:1.4.0
+    environment:
+      - CHANNEL_ID=demo-app-chain
+      - CHANNEL_TX_FILE=/data/channel.tx
+      - ORDERER_HOST=orderer1-org0
+      - ORDERER_TLS_CA=/org0/data/org0-ca-chain.pem
+      - ORG1_HOME=/org1/data
+      - ORG1_MSPID=org1MSP
+      - ORG1_PEER_HOST=org1
+      - ORG1_TLS_CA=/org1/data/org1-ca-chain.pem
+      - ORG1_ANCHOR_TX_FILE=/data/org1_anchors.tx
+      - ORG2_HOME=/org2/data
+      - ORG2_MSPID=org2MSP
+      - ORG2_PEER_HOST=org2
+      - ORG2_TLS_CA=/org2/data/org2-ca-chain.pem
+      - ORG2_ANCHOR_TX_FILE=/data/org2_anchors.tx
+      - GOPATH=/opt/gopath
+      - FABRIC_LOGGING_SPEC=debug
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CLIENTAUTHREQUIRED=true
+    command: /bin/bash -c 'sleep 3;/scripts/run-channel.sh 2>&1 | tee /data/logs/run-channel.log; sleep 99999'
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+      - ./chaincode:/opt/gopath/src
+      - ../org0/data:/org0/data
+      - ../org1/data:/org1/data
+      - ../org2/data:/org2/data
+    networks:
+      - myfabric-network
+    depends_on:
+      - setup-channel
+

@@ -1,0 +1,75 @@
+version: '3'
+
+networks:
+  myfabric-network:
+
+services:
+
+  rca-org0:
+    container_name: rca-org0
+    image: hyperledger/fabric-ca:1.4.0
+    command: /bin/bash -c '/scripts/start-root-ca.sh 2>&1 | tee /data/logs/rca-org0.log'
+    environment:
+      - FABRIC_CA_SERVER_HOME=/etc/hyperledger/fabric-ca
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_CSR_CN=rca-org0
+      - FABRIC_CA_SERVER_CSR_HOSTS=rca-org0
+      - FABRIC_CA_SERVER_DEBUG=true
+      #- BOOTSTRAP_USER_PASS=rca-org0-admin:rca-org0-adminpw
+      - TARGET_CERTFILE=/data/org0-ca-cert.pem
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+      - ./config:/config
+    networks:
+      - myfabric-network
+
+  ica-org0:
+    container_name: ica-org0
+    image: hyperledger/fabric-ca:1.4.0
+    command: /bin/bash -c '/scripts/start-intermediate-ca.sh 2>&1 | tee /data/logs/ica-org0.log'
+    environment:
+      - FABRIC_CA_SERVER_HOME=/etc/hyperledger/fabric-ca
+      - FABRIC_CA_SERVER_CA_NAME=ica-org0
+      - FABRIC_CA_SERVER_INTERMEDIATE_TLS_CERTFILES=/data/org0-ca-cert.pem
+      - FABRIC_CA_SERVER_CSR_HOSTS=ica-org0
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_DEBUG=true
+      #- BOOTSTRAP_USER_PASS=ica-org0-admin:ica-org0-adminpw
+      - PARENT_URL=https://rca-org0-admin:rca-org0-adminpw@rca-org0:7054
+      - TARGET_CHAINFILE=/data/org0-ca-chain.pem
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+      - ./config:/config
+    networks:
+      - myfabric-network
+    depends_on:
+      - rca-org0
+
+  setup-org0:
+    container_name: setup-org0
+    image: hyperledger/fabric-ca-tools
+    command: /bin/bash -c '/scripts/setup-org.sh 2>&1 | tee /data/logs/setup-org0.log; sleep 99999'
+    environment:
+      - ORG=org0
+      - ICA_ADMIN_HOME=/root/cas
+      - ICA_FILE=/data/org0-ca-chain.pem
+      - ICA_USER_PASS=ica-org0-admin:ica-org0-adminpw
+      - ICA_HOST=ica-org0
+      - ADMIN_NAME=admin-org0
+      - ADMIN_PASS=admin-org0pw
+      - ORG_MSP_DIR=/data/msp
+      - ORG_ADMIN_HOME=/data/admin
+      - ORDERER_HOME=/data/orderer
+      - ORDERER_NAME=orderer1-org0
+      - ORDERER_PASS=orderer1-org0pw
+      - ORDERER_HOST=orderer1-org0
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+    networks:
+      - myfabric-network
+    depends_on:
+      - ica-org0
+

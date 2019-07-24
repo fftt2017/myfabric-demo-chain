@@ -1,0 +1,82 @@
+version: '3'
+
+networks:
+  drb-network:
+
+services:
+
+  rca-org2:
+    container_name: rca-org2
+    image: hyperledger/fabric-ca:1.4.0
+    command: /bin/bash -c '/scripts/start-root-ca.sh 2>&1 | tee /data/logs/rca-org2.log'
+    environment:
+      - FABRIC_CA_SERVER_HOME=/etc/hyperledger/fabric-ca
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_CSR_CN=rca-org2
+      - FABRIC_CA_SERVER_CSR_HOSTS=rca-org2
+      - FABRIC_CA_SERVER_DEBUG=true
+      #- BOOTSTRAP_USER_PASS=rca-org2-admin:rca-org2-adminpw
+      - TARGET_CERTFILE=/data/org2-ca-cert.pem
+      #- FABRIC_ORGS=committee org2 org1
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+      - ./config:/config
+    networks:
+      - drb-network
+
+  ica-org2:
+    container_name: ica-org2
+    image: hyperledger/fabric-ca:1.4.0
+    command: /bin/bash -c '/scripts/start-intermediate-ca.sh 2>&1 | tee /data/logs/ica-org2.log'
+    environment:
+      - FABRIC_CA_SERVER_HOME=/etc/hyperledger/fabric-ca
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_INTERMEDIATE_TLS_CERTFILES=/data/org2-ca-cert.pem
+      - FABRIC_CA_SERVER_CA_NAME=ica-org2
+      - FABRIC_CA_SERVER_CSR_HOSTS=ica-org2
+      - FABRIC_CA_SERVER_DEBUG=true
+      #- BOOTSTRAP_USER_PASS=ica-org2-admin:ica-org2-adminpw
+      - PARENT_URL=https://rca-org2-admin:rca-org2-adminpw@rca-org2:7054
+      - TARGET_CHAINFILE=/data/org2-ca-chain.pem
+      #- ORG=org2
+      #- FABRIC_ORGS=committee org2 org1
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+      - ./config:/config
+    networks:
+      - drb-network
+    depends_on:
+      - rca-org2
+
+  setup-org2:
+    container_name: setup-org2
+    image: hyperledger/fabric-ca-tools
+    command: /bin/bash -c '/scripts/setup-org.sh 2>&1 | tee /data/logs/setup-org2.log; sleep 99999'
+    environment:
+      - ORG=org2
+      - ICA_ADMIN_HOME=/root/cas
+      - ICA_FILE=/data/org2-ca-chain.pem
+      - ICA_USER_PASS=ica-org2-admin:ica-org2-adminpw
+      - ICA_HOST=ica-org2
+      - ORG_MSP_DIR=/data/msp
+      - ORG_ADMIN_HOME=/data/admin
+      - ADMIN_NAME=admin-org2
+      - ADMIN_PASS=admin-org2pw
+      - PEER_HOMES=/data/peer/peer1 /data/peer/peer2
+      - PEER_NAMES=peer1-org2 peer2-org2
+      - PEER_PASSES=peer1-org2pw peer2-org2pw
+      - PEER_HOSTS=peer1-org2 peer2-org2
+      - ORG_USER_HOME=/data/user
+      - USER_NAME=user-org2
+      - USER_PASS=user-org2pw
+    volumes:
+      - ../scripts:/scripts
+      - ./data:/data
+      - /bin:/tools
+    networks:
+      - drb-network
+    depends_on:
+      - ica-org2
+
