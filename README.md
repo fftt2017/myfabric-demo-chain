@@ -1,10 +1,10 @@
-###前提
+### 前提
 
 windows系统，安装virtualbox
 安装docker
 安装docker compose
 
-###运行
+### 运行
 
 **启动链**
 start-chain.sh 启动链并部署调用合约
