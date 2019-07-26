@@ -1,8 +1,8 @@
 ### 前提
 
-- windows系统，安装virtualbox
-- 安装docker
-- 安装docker compose
+- windows系统，安装[virtualbox](https://www.virtualbox.org/wiki/Downloads)
+- 安装[docker](https://docs.docker.com/install/)
+- 安装[docker compose](https://docs.docker.com/compose/install/)
 
 ### 运行
 
